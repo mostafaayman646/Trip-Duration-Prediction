@@ -1,6 +1,44 @@
 import pandas as pd
 import numpy as np
 
+def fit_transform(data,choice):
+    from sklearn.preprocessing import MinMaxScaler
+    from sklearn.preprocessing import StandardScaler
+
+    if choice == 0:
+        return data,None
+    
+    if choice ==1:
+        processor = MinMaxScaler()
+        return processor.fit_transform(data), processor
+    
+    if choice ==2:
+        processor = StandardScaler()
+        return processor.fit_transform(data), processor
+
+def transform_train_val(X_train, X_val,choice):
+    if choice !=0:
+        X_train, X_train_transformer = fit_transform(X_train,choice)
+        X_val = X_train_transformer.transform(X_val)
+    
+    return X_train, X_val
+
+def monomials_poly_features(X, degree = 1, monomial_features = False):
+    from sklearn.preprocessing import PolynomialFeatures
+    import numpy as np
+    
+    if monomial_features:
+        columns = X.shape[1]
+        for i  in range(2,degree+1):
+            for j in range(columns):
+                X = np.column_stack((X, X[:,j]**(i)))
+    
+    else:
+        poly = PolynomialFeatures(degree=degree, include_bias = False, interaction_only=False)
+        X = poly.fit_transform(X)
+    
+    return X
+
 def encoding(df_train,df_val,df_test):
     from sklearn.preprocessing import OneHotEncoder
 
@@ -106,7 +144,7 @@ def load_data(data_path,outlier = False):
     lon2 = df['dropoff_longitude'].to_numpy()
     distance = getDistanceFromLatLonInM(lat1, lon1, lat2, lon2)
     df = df.assign(
-        Distance = distance
+        Distance = np.sqrt(distance)
     )
     
     #Log transformation
