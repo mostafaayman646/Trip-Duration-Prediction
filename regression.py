@@ -1,7 +1,12 @@
 def ridge():
     from sklearn.linear_model import  Ridge
     
-    return Ridge()
+    return Ridge(fit_intercept=True)
+
+def lasso(alpha):
+    from sklearn.linear_model import Lasso
+    
+    return  Lasso(fit_intercept = True, alpha = alpha, max_iter = 10000)
 
 def evaluate(x_train, t_train,x_val, t_val, model, name):
     from sklearn.metrics import r2_score
@@ -26,33 +31,52 @@ def evaluate(x_train, t_train,x_val, t_val, model, name):
     
     return r2_train,r2_val
 
-def InvestigateRidgeParams(x,t,alphas,model,option=1):
+def InvestigateRidgeParams(X,t,option=1):
+    from sklearn.preprocessing import MinMaxScaler,StandardScaler
+    from sklearn.model_selection import KFold, cross_val_score
+    from sklearn.pipeline import make_pipeline
+    
+    if option == 1:
+        pipeline = make_pipeline(MinMaxScaler(),
+                             ridge())
+    
+    elif option == 2:
+        pipeline = make_pipeline(StandardScaler(),
+                             ridge())
+
+    kf = KFold(n_splits=4, random_state=35, shuffle=True)
+    scores = cross_val_score(pipeline, X, t, cv = kf,
+                             scoring = 'r2')
+    print(scores)
+    print(scores.mean(), scores.std())
+
+def lassoSelection(x_train,x_val,t_train,t_val,alphas):
+    from sklearn.feature_selection import SelectFromModel
     import numpy as np
-    from sklearn.model_selection import GridSearchCV, KFold
-    from sklearn.pipeline import Pipeline
-    from sklearn.preprocessing import  MinMaxScaler,StandardScaler
+    from sklearn.metrics import r2_score
     
-    if option ==1:
-        pipeline = Pipeline(steps=[("scaler",MinMaxScaler()),('model',model)])
+    alphas_dict = {}
     
-    elif option ==2:
-        pipeline = Pipeline(steps=[("scaler",StandardScaler()),('model',model)])
+    selected_features = {}
     
-    elif option ==0:
-        pipeline = Pipeline(steps=[('model',model)])
+    for alpha in alphas:
+        model = lasso(alpha)
+        
+        sfm = SelectFromModel(model )
+        sfm.fit(x_train,t_train)
+        
+        idx = sfm.get_support()
+        
+        
+        pred_t = sfm.estimator_.predict(x_val)
+        lass_val_err = r2_score(t_val, pred_t)
+        
+        selected_features[alpha] = idx
+        alphas_dict[alpha] = lass_val_err
+        
+        
+        print(f'alpha={alpha}, selects {len(np.flatnonzero(idx))} features and has {lass_val_err} val error')
     
-    grid = {'model__alpha': alphas}
+    print('+++++++++++++++++++++++++++++++++++++++++++++\n')
     
-    kf = KFold(n_splits=4, shuffle=True, random_state=17)
-    
-    search = GridSearchCV(pipeline, grid, cv=kf, scoring= 'r2')
-    
-    search.fit(x, t)
-    
-    r2_score = search.cv_results_['mean_test_score'] 
-    
-    print('Best Parameters: ',search.best_params_)
-    
-    print('r2_score',r2_score)
-    
-    return r2_score,search.best_params_['model__alpha']
+    return selected_features[0.01]

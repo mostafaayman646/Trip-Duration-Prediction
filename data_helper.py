@@ -1,5 +1,8 @@
 import pandas as pd
 import numpy as np
+from geopy import distance
+from geopy.point import Point
+import math
 
 def fit_transform(data,choice):
     from sklearn.preprocessing import MinMaxScaler
@@ -23,26 +26,37 @@ def transform_train_val(X_train, X_val,choice):
     
     return X_train, X_val
 
-def monomials_poly_features(X, degree = 1, monomial_features = False):
+def monomials_poly_features(df, degree = 1, monomial_features = False):
     from sklearn.preprocessing import PolynomialFeatures
-    import numpy as np
+    
+    numerical_features = ['pickup_longitude','pickup_latitude','dropoff_longitude','dropoff_latitude','distance_haversine',
+                          'direction','distance_manhattan']
+    
+    X = df[numerical_features].to_numpy()
     
     if monomial_features:
         columns = X.shape[1]
+        feature_names = numerical_features.copy()
+        
         for i  in range(2,degree+1):
-            for j in range(columns):
-                X = np.column_stack((X, X[:,j]**(i)))
+            for j, col in enumerate(numerical_features):
+                X = np.column_stack((X, X[:, j]**i))
+                feature_names.append(f"{col}^{i}")
     
     else:
-        poly = PolynomialFeatures(degree=degree, include_bias = False, interaction_only=False)
+        poly = PolynomialFeatures(degree=degree, include_bias=False, interaction_only=False)
         X = poly.fit_transform(X)
+        feature_names = poly.get_feature_names_out(numerical_features)
     
-    return X
+    # Create dataframe with new features
+    df_poly = pd.DataFrame(X, columns=feature_names, index=df.index)
+    
+    return pd.concat([df.drop(columns=numerical_features), df_poly], axis=1)
 
 def encoding(df_train,df_val,df_test):
     from sklearn.preprocessing import OneHotEncoder
 
-    cat_cols = ['passenger_count', 'months', 'day_of_week', 'hours']
+    cat_cols = ['passenger_count', 'month', 'dayofweek', 'hour', 'day', 'Season']
 
     enc = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
     enc.fit(df_train[cat_cols])
@@ -65,8 +79,10 @@ def encoding(df_train,df_val,df_test):
     #Make target at last again
     log_trip_duration = df_train.pop('log_trip_duration')
     df_train['log_trip_duration'] = log_trip_duration
+    
     log_trip_duration = df_val.pop('log_trip_duration')
     df_val['log_trip_duration'] = log_trip_duration
+    
     log_trip_duration = df_test.pop('log_trip_duration')
     df_test['log_trip_duration'] = log_trip_duration
 
@@ -84,19 +100,39 @@ def outlier_removal(df,features):
         df = df[(df[feature] >= lower_bound) & (df[feature] <= upper_bound)]
     return df
 
-def deg2rad(deg):
-    return np.deg2rad(deg)
+def haversine_distance(row):
+    pick = Point(row['pickup_latitude'], row['pickup_longitude'])
+    drop = Point(row['dropoff_latitude'], row['dropoff_longitude'])
+    dist = distance.geodesic(pick, drop)
+    return np.log1p(dist.km)
 
-def getDistanceFromLatLonInM(lat1, lon1, lat2, lon2):
-    R = 6371000.0  # Earth radius in meters
+def calculate_direction(row):
+    pickup_coordinates =  Point(row['pickup_latitude'], row['pickup_longitude'])
+    dropoff_coordinates = Point(row['dropoff_latitude'], row['dropoff_longitude'])
     
-    dLat = deg2rad(lat2 - lat1)
-    dLon = deg2rad(lon2 - lon1)
+    # Calculate the difference in longitudes
+    delta_longitude = dropoff_coordinates[1] - pickup_coordinates[1]
     
-    a = np.sin(dLat / 2) ** 2 + np.cos(deg2rad(lat1)) * np.cos(deg2rad(lat2)) * np.sin(dLon / 2) ** 2
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    # Calculate the bearing (direction) using trigonometry
+    y = math.sin(math.radians(delta_longitude)) * math.cos(math.radians(dropoff_coordinates[0]))
+    x = math.cos(math.radians(pickup_coordinates[0])) * math.sin(math.radians(dropoff_coordinates[0])) - \
+        math.sin(math.radians(pickup_coordinates[0])) * math.cos(math.radians(dropoff_coordinates[0])) * \
+        math.cos(math.radians(delta_longitude))
     
-    return R * c
+    # Calculate the bearing in degrees
+    bearing = math.atan2(y, x)
+    bearing = math.degrees(bearing)
+    
+    # Adjust the bearing to be in the range [0, 360)
+    bearing = (bearing + 360) % 360
+    
+    return bearing
+
+def manhattan_distance(row):
+    lat_distance = abs(row['pickup_latitude'] - row['dropoff_latitude']) * 111  # approx 111 km per degree latitude
+    lon_distance = abs(row['pickup_longitude'] - row['dropoff_longitude']) * 111 * math.cos(math.radians(row['pickup_latitude']))  # adjust for latitude
+    
+    return lat_distance + lon_distance
 
 def to_numpy(df,idx = -1):
     data = df.to_numpy()
@@ -111,24 +147,19 @@ def to_numpy(df,idx = -1):
     
     return data,X,t
 
-def load_data(data_path,outlier = False):
+def prepare_data(data_path,outlier = False):
     df = pd.read_csv(data_path)
     
     #Datetime features
-    df['pickup_datetime'] = df['pickup_datetime'].astype('datetime64[ns]')
-    months = df['pickup_datetime'].dt.month.astype(int)
-    day_of_week = df['pickup_datetime'].dt.day_of_week.astype(int)
-    hours = df['pickup_datetime'].dt.hour.astype(int)
-    df.drop(columns='pickup_datetime',inplace=True)
-    df = df.assign(
-        months = months,
-        day_of_week = day_of_week,
-        hours = hours
-    )
-    
-    #Removing id columns
-    df.drop(columns=['id','vendor_id'], inplace=True)
-    
+    df["pickup_datetime"] = pd.to_datetime(df["pickup_datetime"]) 
+    bins = [0, 2, 5, 8, 11, 12]  # 0, 2, 5, 8, 11, 12 represent the starting and ending months of each season
+    labels = ['0', '1', '2', '3', '4'] # Labels for each season ['Winter', 'Spring', 'Summer', 'Autumn', 'Winter'] 
+    df["hour"] = df["pickup_datetime"].dt.hour
+    df["day"]  = df["pickup_datetime"].dt.day
+    df["dayofweek"] = df["pickup_datetime"].dt.dayofweek
+    df["month"]  = df["pickup_datetime"].dt.month
+    df['Season'] = pd.cut(df["month"] , bins=bins, labels=labels, right=False,ordered=False) 
+
     #Changing store flag to int
     df['store_and_fwd_flag'] = df['store_and_fwd_flag'].map({'N': 0, 'Y': 1}).astype('int64')
     
@@ -138,20 +169,18 @@ def load_data(data_path,outlier = False):
         df = outlier_removal(df,features)
     
     #Distance feature
-    lat1 = df['pickup_latitude'].to_numpy()
-    lon1 = df['pickup_longitude'].to_numpy()
-    lat2 = df['dropoff_latitude'].to_numpy()
-    lon2 = df['dropoff_longitude'].to_numpy()
-    distance = getDistanceFromLatLonInM(lat1, lon1, lat2, lon2)
-    df = df.assign(
-        Distance = np.sqrt(distance)
-    )
+    df['distance_haversine'] = df.apply(haversine_distance, axis=1)
+    df['direction']          = df.apply(calculate_direction, axis=1)
+    df['distance_manhattan'] = df.apply(manhattan_distance, axis=1)
     
     #Log transformation
     df['log_trip_duration'] = np.log1p(df.trip_duration)
-    df.drop(columns='trip_duration',inplace=True)
+    
+    #Removing id,datedtime columns
+    df.drop(columns=['id','vendor_id','pickup_datetime','trip_duration'], inplace=True)
     
     #Remove duplicates
     df = df.drop_duplicates(keep="last")
+    df.reset_index(drop=True, inplace=True)
     
     return df
