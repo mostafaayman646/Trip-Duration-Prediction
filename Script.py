@@ -15,12 +15,14 @@ args = parser.parse_args()
 
 
 if __name__ == '__main__':
-    root_dir = '../'
     if args.dataset == 1:
-        test = pd.read_csv(os.path.join(root_dir, 'split_sample/test.csv'))
+        test = pd.read_csv('split_sample/test.csv')
 
     elif args.dataset == 2:
-        test = pd.read_csv(os.path.join(root_dir, 'split/test.csv'))
+        zip_path = 'split/test.zip'
+        filename_inside_zip = 'test.csv'
+
+        test = read_zip_file(zip_path, filename_inside_zip)
     
     test = prepare_data(test,outlier=args.outlier)
     

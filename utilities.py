@@ -1,4 +1,6 @@
+import zipfile
 import joblib
+import pandas as pd
 
 def evaluate(model, data, features,data_name):
     from sklearn.metrics import r2_score
@@ -19,3 +21,9 @@ def load_model(file_path):
         print("Error: The file could not be loaded.")
     except Exception as e:
         print(f"An error occurred: {e}")
+
+def read_zip_file(zip_path, filename_inside_zip):
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        # read CSV directly from inside the zip
+        with zip_ref.open(filename_inside_zip) as f:
+            return pd.read_csv(f)
