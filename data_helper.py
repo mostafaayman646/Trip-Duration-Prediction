@@ -60,8 +60,7 @@ def manhattan_distance(df):
 
 def weak_features(df):
     #Based on EDA these are the weak features
-    drop_features = ['vendor_id','passenger_count','pickup_longitude','pickup_latitude','dropoff_longitude','dropoff_latitude',
-                      'day','month','Season']
+    drop_features = ['pickup_latitude','dropoff_latitude','day','dayofweek']
     
     return df.drop(columns = drop_features)
 
@@ -95,6 +94,9 @@ def prepare_data(df,outlier,weak_features_drop):
     
     if weak_features_drop:
         df = weak_features(df)
+    
+    log_trip_duration = df.pop('log_trip_duration')
+    df['log_trip_duration'] = log_trip_duration
     
     df.reset_index(drop=True, inplace=True)
     

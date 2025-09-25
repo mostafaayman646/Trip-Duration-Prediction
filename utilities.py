@@ -14,8 +14,7 @@ def evaluate(model, data, features,data_name):
 
 def load_model(file_path):
     try:
-        model = joblib.load(file_path)
-        return model
+        return joblib.load(file_path)
     except FileNotFoundError:
         print(f"Error: The file at {file_path} was not found.")
     except joblib.externals.loky.process_executor.TerminatedWorkerError:

@@ -2,11 +2,10 @@ import argparse
 import joblib
 from data_helper import*
 import os
-from sklearn.preprocessing import OneHotEncoder, StandardScaler,MinMaxScaler,PolynomialFeatures
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import Ridge
 from utilities import*
+from regression_utils import*
+from sklearn.utils import shuffle
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default=2,
@@ -15,86 +14,64 @@ parser.add_argument('--dataset', type=str, default=2,
 
 parser.add_argument('--outlier', type=bool, default=False)
 
+parser.add_argument('--trainval', type=bool, default=True)
+
 parser.add_argument('--preprocessing', type=str, default='StandardScaler',
                     help='MinMaxScaler for min/max scaling and StandardScaler for standardizing')
 
-parser.add_argument('--degree', type=int, default=6,
-                    help = 'add polynomial degrees of numerical features to your dataframe')
+parser.add_argument('--weak_features_drop',type =bool,default=False)
 
-parser.add_argument('--weak_features_drop',type =bool,default=True)
+parser.add_argument('--search_best_params',type =bool,default=False)
 
-parser.add_argument('--saveModel',type =bool,default=True)
+parser.add_argument('--saveModel',type =bool,default=False)
 
 args = parser.parse_args()
-
-
-def make_pipeline(train,val):
-    numeric_features = (
-    train.select_dtypes(include=["float64"])
-    .columns
-    .drop("log_trip_duration")
-    .tolist()
-    )
-    
-    categorical_features = (
-    train.select_dtypes(exclude=["float64"])
-    .columns
-    .tolist()
-    )
-    
-    train_features = categorical_features + numeric_features
-    
-    if args.preprocessing == 'MinMaxScaler':
-        scaler = MinMaxScaler()
-    
-    elif args.preprocessing == 'StandardScaler':
-        scaler = StandardScaler()
-    
-    numeric_pipeline = Pipeline([
-        ("poly", PolynomialFeatures(degree=args.degree, include_bias=False)),
-        ("scaler", scaler)
-    ])
-    
-    clf = ColumnTransformer([
-        ('ohe',OneHotEncoder(handle_unknown='ignore'),categorical_features),
-        ('numeric',numeric_pipeline,numeric_features)
-        ], 
-        remainder='passthrough')
-    
-    pipeline = Pipeline(steps=[
-        ('clf', clf),
-        ('regression', Ridge())
-    ])
-    
-    model = pipeline.fit(train[train_features], train.log_trip_duration)
-    
-    evaluate(model,train,train_features,'Train')
-    evaluate(model,val,train_features,'Test')
-    
-    return model,numeric_features,categorical_features
 
 
 if __name__ == '__main__':
     root_dir = '../'
     if args.dataset == 1:
         train = pd.read_csv(os.path.join(root_dir, 'split_sample/train.csv'))
-        val = pd.read_csv(os.path.join(root_dir, 'split_sample/test.csv'))
+        
+        if args.trainval:
+            val = pd.read_csv(os.path.join(root_dir, 'split_sample/val.csv'))
+            train = pd.concat([train,val],ignore_index=True)
+            train = shuffle(train,random_state=17)
+            train.reset_index(inplace=True, drop=True)
+        
+        test = pd.read_csv(os.path.join(root_dir, 'split_sample/test.csv'))
 
     elif args.dataset == 2:
         train = pd.read_csv(os.path.join(root_dir, 'split/train.csv'))
-        val = pd.read_csv(os.path.join(root_dir, 'split/test.csv'))
+        
+        if args.trainval:
+            val = pd.read_csv(os.path.join(root_dir, 'split/val.csv'))
+            train = pd.concat([train,val],ignore_index=True)
+            train = shuffle(train,random_state=17)
+            train.reset_index(inplace=True, drop=True)
+        
+        test = pd.read_csv(os.path.join(root_dir, 'split/test.csv'))
 
     train = prepare_data(train,outlier=args.outlier,weak_features_drop = args.weak_features_drop)
-    val = prepare_data(val,outlier=args.outlier,weak_features_drop=args.weak_features_drop)
+    test = prepare_data(test,outlier=args.outlier,weak_features_drop=args.weak_features_drop)
     
     print(args)
-    model,numeric_features,categorical_features = make_pipeline(train,val)
     
+    args_dict = vars(args)
+    model_args = {
+        "preprocessing":args_dict['preprocessing']
+    }
+    alphas = [0.01,0.1,1,10,100,500]
+    
+    if args.search_best_params:
+        model,numeric_features,categorical_features = find_best_degree_alpha(train,alphas,model_args) #Best alpha =100 and degree = 5
+    
+    else:
+        model,numeric_features,categorical_features = train_model(train,best_alpha=100,best_degree=5,args=model_args)
+    
+    evaluate(model,test,numeric_features+categorical_features,"Test")
     
     if args.saveModel:
-        
-        args_dict = vars(args)
-        
         
         filtered_args = {
             "dataset": args_dict["dataset"],
