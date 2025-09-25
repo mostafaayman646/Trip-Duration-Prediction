@@ -4,7 +4,7 @@ from data_helper import*
 import os
 from utilities import*
 from regression_utils import*
-from sklearn.utils import shuffle
+from sklearn.model_selection import train_test_split
 
 
 parser = argparse.ArgumentParser()
@@ -14,8 +14,6 @@ parser.add_argument('--dataset', type=str, default=2,
 
 parser.add_argument('--outlier', type=bool, default=False)
 
-parser.add_argument('--trainval', type=bool, default=True)
-
 parser.add_argument('--preprocessing', type=str, default='StandardScaler',
                     help='MinMaxScaler for min/max scaling and StandardScaler for standardizing')
 
@@ -23,7 +21,7 @@ parser.add_argument('--weak_features_drop',type =bool,default=False)
 
 parser.add_argument('--search_best_params',type =bool,default=False)
 
-parser.add_argument('--saveModel',type =bool,default=False)
+parser.add_argument('--saveModel',type =bool,default=True)
 
 args = parser.parse_args()
 
@@ -31,26 +29,36 @@ args = parser.parse_args()
 if __name__ == '__main__':
     root_dir = '../'
     if args.dataset == 1:
-        train = pd.read_csv(os.path.join(root_dir, 'split_sample/train.csv'))
-        
-        if args.trainval:
-            val = pd.read_csv(os.path.join(root_dir, 'split_sample/val.csv'))
-            train = pd.concat([train,val],ignore_index=True)
-            train = shuffle(train,random_state=17)
-            train.reset_index(inplace=True, drop=True)
-        
-        test = pd.read_csv(os.path.join(root_dir, 'split_sample/test.csv'))
+        df1 = pd.read_csv(os.path.join(root_dir, 'split_sample/train.csv'))
+        df2 = pd.read_csv(os.path.join(root_dir, 'split_sample/val.csv'))
+        df3 = pd.read_csv(os.path.join(root_dir, 'split_sample/test.csv'))
+
+        # Concatenate them into one dataframe
+        df = pd.concat([df1, df2, df3], ignore_index=True)
+
+        # Split into train and test
+        train, test = train_test_split(
+            df, 
+            test_size=0.2, 
+            shuffle=True, 
+            random_state=17
+        )
 
     elif args.dataset == 2:
-        train = pd.read_csv(os.path.join(root_dir, 'split/train.csv'))
-        
-        if args.trainval:
-            val = pd.read_csv(os.path.join(root_dir, 'split/val.csv'))
-            train = pd.concat([train,val],ignore_index=True)
-            train = shuffle(train,random_state=17)
-            train.reset_index(inplace=True, drop=True)
-        
-        test = pd.read_csv(os.path.join(root_dir, 'split/test.csv'))
+        df1 = pd.read_csv(os.path.join(root_dir, 'split/train.csv'))
+        df2 = pd.read_csv(os.path.join(root_dir, 'split/val.csv'))
+        df3 = pd.read_csv(os.path.join(root_dir, 'split/test.csv'))
+
+        # Concatenate them into one dataframe
+        df = pd.concat([df1, df2, df3], ignore_index=True)
+
+        # Split into train and test
+        train, test = train_test_split(
+            df, 
+            test_size=0.2, 
+            shuffle=True, 
+            random_state=17
+        )
 
     train = prepare_data(train,outlier=args.outlier,weak_features_drop = args.weak_features_drop)
     test = prepare_data(test,outlier=args.outlier,weak_features_drop=args.weak_features_drop)
@@ -61,27 +69,30 @@ if __name__ == '__main__':
     model_args = {
         "preprocessing":args_dict['preprocessing']
     }
-    alphas = [0.01,0.1,1,10,100,500]
+    alphas = [0.01,0.1,1,10,100]
+    
+    best_alpha = 100
+    best_degree = 5
     
     if args.search_best_params:
         model,numeric_features,categorical_features = find_best_degree_alpha(train,alphas,model_args) #Best alpha =100 and degree = 5
     
     else:
-        model,numeric_features,categorical_features = train_model(train,best_alpha=100,best_degree=5,args=model_args)
+        model,numeric_features,categorical_features = train_model(train,best_alpha=best_alpha,best_degree=best_degree,args=model_args)
     
     evaluate(model,test,numeric_features+categorical_features,"Test")
     
     if args.saveModel:
         
         filtered_args = {
-            "dataset": args_dict["dataset"],
             "weak_features_drop": args_dict["weak_features_drop"],
             "outlier": args_dict["outlier"]
         }
         
         model_data = {
         'model': model,
-        'Polynomial_Degree':args.degree,
+        'Polynomial_Degree':best_degree,
+        'Alpha': best_alpha,
         'Scaler':args.preprocessing,
         'Outlier_Removal': args.outlier,
         'Numerical features':numeric_features,
