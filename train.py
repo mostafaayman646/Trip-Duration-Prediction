@@ -23,7 +23,7 @@ parser.add_argument('--degree', type=int, default=6,
 
 parser.add_argument('--weak_features_drop',type =bool,default=True)
 
-parser.add_argument('--saveModel',type =bool,default=False)
+parser.add_argument('--saveModel',type =bool,default=True)
 
 args = parser.parse_args()
 
@@ -90,14 +90,26 @@ if __name__ == '__main__':
     print(args)
     model,numeric_features,categorical_features = make_pipeline(train,val)
     
+    
     if args.saveModel:
+        
+        args_dict = vars(args)
+        
+        
+        filtered_args = {
+            "dataset": args_dict["dataset"],
+            "weak_features_drop": args_dict["weak_features_drop"],
+            "outlier": args_dict["outlier"]
+        }
+        
         model_data = {
         'model': model,
         'Polynomial_Degree':args.degree,
         'Scaler':args.preprocessing,
         'Outlier_Removal': args.outlier,
         'Numerical features':numeric_features,
-        'Categorical features': categorical_features
+        'Categorical features': categorical_features,
+        'args': filtered_args
         }
         
         filename = 'Ridge_Model.pkl'

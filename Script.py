@@ -1,32 +1,24 @@
-import argparse
 import pandas as pd
-import os
 from utilities import*
 from data_helper import*
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default=2,
-                    help =  '1 for split_sample'
-                            '2 for full dataset')
-
-parser.add_argument('--outlier', type=bool, default=False)
-
-args = parser.parse_args()
-
 
 if __name__ == '__main__':
-    if args.dataset == 1:
+    modeling_pipeline = load_model("Ridge_Model.pkl")
+    
+    args = modeling_pipeline['args']
+    
+    if args["dataset"] == 1:
         test = pd.read_csv('split_sample/test.csv')
 
-    elif args.dataset == 2:
+    elif args["dataset"] == 2:
         zip_path = 'split/test.zip'
         filename_inside_zip = 'test.csv'
 
         test = read_zip_file(zip_path, filename_inside_zip)
     
-    test = prepare_data(test,outlier=args.outlier,weak_features_drop = False)
+    test = prepare_data(test,outlier=args["outlier"],weak_features_drop = args["weak_features_drop"])
     
-    modeling_pipeline = load_model("Ridge_Model.pkl")
     
     model = modeling_pipeline['model']
     
