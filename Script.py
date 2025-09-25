@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
         test = read_zip_file(zip_path, filename_inside_zip)
     
-    test = prepare_data(test,outlier=args.outlier)
+    test = prepare_data(test,outlier=args.outlier,weak_features_drop = False)
     
     modeling_pipeline = load_model("Ridge_Model.pkl")
     

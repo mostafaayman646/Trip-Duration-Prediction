@@ -43,7 +43,7 @@ def calculate_direction(df):
 
     bearing = np.degrees(np.arctan2(y, x))
     bearing = (bearing + 360) % 360  # normalize to [0,360)
-    return bearing
+    return np.log1p(bearing)
 
 def manhattan_distance(df):
     lat1 = np.radians(df['pickup_latitude'].values)
@@ -56,9 +56,16 @@ def manhattan_distance(df):
     # Longitude distance depends on latitude
     lon_dist = np.abs(df['pickup_longitude'].values - df['dropoff_longitude'].values) * 111 * np.cos(lat1)
 
-    return lat_dist + lon_dist
+    return np.log1p(lat_dist + lon_dist)
 
-def prepare_data(df,outlier):
+def weak_features(df):
+    #Based on EDA these are the weak features
+    drop_features = ['vendor_id','passenger_count','pickup_longitude','pickup_latitude','dropoff_longitude','dropoff_latitude',
+                      'day','month','Season']
+    
+    return df.drop(columns = drop_features)
+
+def prepare_data(df,outlier,weak_features_drop):
     
     #Datetime features
     df["pickup_datetime"] = pd.to_datetime(df["pickup_datetime"]) 
@@ -85,6 +92,10 @@ def prepare_data(df,outlier):
     
     #Removing id,datedtime columns
     df.drop(columns=['id','pickup_datetime','trip_duration'], inplace=True)
+    
+    if weak_features_drop:
+        df = weak_features(df)
+    
     df.reset_index(drop=True, inplace=True)
     
     return df

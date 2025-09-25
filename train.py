@@ -18,20 +18,29 @@ parser.add_argument('--outlier', type=bool, default=False)
 parser.add_argument('--preprocessing', type=str, default='StandardScaler',
                     help='MinMaxScaler for min/max scaling and StandardScaler for standardizing')
 
-parser.add_argument('--degree', type=int, default=4,
+parser.add_argument('--degree', type=int, default=6,
                     help = 'add polynomial degrees of numerical features to your dataframe')
 
-parser.add_argument('--saveModel',type =bool,default=True)
+parser.add_argument('--weak_features_drop',type =bool,default=True)
+
+parser.add_argument('--saveModel',type =bool,default=False)
 
 args = parser.parse_args()
 
 
 def make_pipeline(train,val):
-    numeric_features = ['pickup_latitude', 'pickup_longitude', 'dropoff_latitude', 'dropoff_longitude','distance_haversine'
-                        ,'direction','distance_manhattan']
+    numeric_features = (
+    train.select_dtypes(include=["float64"])
+    .columns
+    .drop("log_trip_duration")
+    .tolist()
+    )
     
-    categorical_features = ['dayofweek', 'month', 'hour', 'day', 'Season', 'store_and_fwd_flag', 
-                            'passenger_count', 'vendor_id']
+    categorical_features = (
+    train.select_dtypes(exclude=["float64"])
+    .columns
+    .tolist()
+    )
     
     train_features = categorical_features + numeric_features
     
@@ -60,7 +69,7 @@ def make_pipeline(train,val):
     model = pipeline.fit(train[train_features], train.log_trip_duration)
     
     evaluate(model,train,train_features,'Train')
-    evaluate(model,val,train_features,'Val')
+    evaluate(model,val,train_features,'Test')
     
     return model,numeric_features,categorical_features
 
@@ -69,17 +78,18 @@ if __name__ == '__main__':
     root_dir = '../'
     if args.dataset == 1:
         train = pd.read_csv(os.path.join(root_dir, 'split_sample/train.csv'))
-        val = pd.read_csv(os.path.join(root_dir, 'split_sample/val.csv'))
+        val = pd.read_csv(os.path.join(root_dir, 'split_sample/test.csv'))
 
     elif args.dataset == 2:
         train = pd.read_csv(os.path.join(root_dir, 'split/train.csv'))
-        val = pd.read_csv(os.path.join(root_dir, 'split/val.csv'))
+        val = pd.read_csv(os.path.join(root_dir, 'split/test.csv'))
 
-    train = prepare_data(train,outlier=args.outlier)
-    val = prepare_data(val,outlier=args.outlier)
+    train = prepare_data(train,outlier=args.outlier,weak_features_drop = args.weak_features_drop)
+    val = prepare_data(val,outlier=args.outlier,weak_features_drop=args.weak_features_drop)
     
+    print(args)
     model,numeric_features,categorical_features = make_pipeline(train,val)
-
+    
     if args.saveModel:
         model_data = {
         'model': model,
@@ -110,3 +120,33 @@ if __name__ == '__main__':
 # Degree = 5:
 # Train has R2 score: 0.6672483598866302
 # Val has R2 score: 0.6521662327698375
+
+# Namespace(dataset=1, outlier=False, preprocessing='StandardScaler', degree=4, weak_features_drop=False, saveModel=False)
+# Train has R2 score: 0.6452331503123522 and RMSE: 0.477202876785712
+# Test has R2 score: 0.585099744498067 and RMSE: 0.4755554948858555
+
+# Namespace(dataset=1, outlier=False, preprocessing='StandardScaler', degree=4, weak_features_drop=True, saveModel=False)
+# Train has R2 score: 0.6301552750835019 and RMSE: 0.48723811209106965
+# Test has R2 score: 0.587927334831535 and RMSE: 0.4739322433076791
+
+# Namespace(dataset=1, outlier=False, preprocessing='StandardScaler', degree=6, weak_features_drop=True, saveModel=False)
+# Train has R2 score: 0.6325516951638476 and RMSE: 0.48565700968707776
+# Test has R2 score: 0.5917104158917128 and RMSE: 0.4717517321007779
+
+# Namespace(dataset=1, outlier=False, preprocessing='StandardScaler', degree=6, weak_features_drop=False, saveModel=False)
+# Train has R2 score: 0.6525055723266242 and RMSE: 0.47228642173086144
+# Test has R2 score: 0.5906101548922225 and RMSE: 0.4723869440166838
+
+#-------------------------------------------------------
+
+# Namespace(dataset=2, outlier=False, preprocessing='StandardScaler', degree=4, weak_features_drop=False, saveModel=False)
+# Train has R2 score: 0.6653862555838408 and RMSE: 0.45972568485981974
+# Test has R2 score: 0.6374749413097359 and RMSE: 0.4792135885057625
+
+# Namespace(dataset=2, outlier=False, preprocessing='StandardScaler', degree=4, weak_features_drop=True, saveModel=False)
+# Train has R2 score: 0.6532404509561935 and RMSE: 0.4679948729708679
+# Test has R2 score: 0.6558526669475873 and RMSE: 0.4669090724810242
+
+# Namespace(dataset=2, outlier=False, preprocessing='StandardScaler', degree=6, weak_features_drop=True, saveModel=False)
+# Train has R2 score: 0.6551077907790722 and RMSE: 0.46673306898540146
+# Test has R2 score: 0.6575285971629057 and RMSE: 0.4657708070669033
