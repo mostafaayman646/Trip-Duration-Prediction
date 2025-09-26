@@ -1,36 +1,28 @@
-import pandas as pd
 from utilities import*
 from data_helper import*
 
 
 if __name__ == '__main__':
-    
-    test = pd.read_csv('../split/test.csv') # Change with the actual path of your test dataset
-    
-    modeling_pipeline = load_model("Ridge_Model.pkl")
-    
-    args = modeling_pipeline['args']
+    # -------- Load Configs --------
+    with open("config/model_config.yaml", "r") as f:
+        model_config = yaml.safe_load(f)
 
-    test = prepare_data(test,outlier=args["outlier"],weak_features_drop = args["weak_features_drop"])
+    with open("config/data_config.yaml", "r") as f:
+        data_config = yaml.safe_load(f)
     
+    #Load Test dataset
+    _,test= load_data_from_zip('Data/split.zip',test_size=data_config['test_size'],Shuffle=data_config['Shuffle'])
+    test = prepare_data(
+        test,
+        outlier=data_config["Outlier_Removal"],
+        weak_features_drop=data_config["Weak_Features_Drop"]
+    )
+    #Load model
+    model = load_model("Models/Ridge_Model.pkl")
     
-    model = modeling_pipeline['model']
-    
-    Polynomial_Degree    = modeling_pipeline['Polynomial_Degree']
-    Alpha                = modeling_pipeline['Alpha']
-    Scaler               = modeling_pipeline['Scaler']
-    Outlier_Removal      = modeling_pipeline['Outlier_Removal']
-    Numerical_features   = modeling_pipeline['Numerical features']
-    Categorical_features = modeling_pipeline['Categorical features']
+    Numerical_features   = model_config["Numerical_Features"]
+    Categorical_features = model_config["Categorical_Features"]
     
     test_features = Numerical_features + Categorical_features
-    
-    print("Model info:")
-    print(f"Polynomial_Degree: {Polynomial_Degree}")
-    print(f"Scaler: {Scaler}")
-    print(f"Ridge Alpha: {Alpha}")
-    print(f"Outlier_Removal: {Outlier_Removal}")
-    print(f"Numerical_features: {Numerical_features}")
-    print(f"Categorical_features: {Categorical_features}")
     
     evaluate(model,test,test_features,'Test')

@@ -5,7 +5,7 @@ from sklearn.linear_model import Ridge
 from utilities import*
 from sklearn.model_selection import RandomizedSearchCV, KFold
 
-def find_best_degree_alpha(train,alphas,args):
+def find_best_degree_alpha(train,alphas,processor):
     numeric_features = (
     train.select_dtypes(include=["float64"])
     .columns
@@ -21,10 +21,10 @@ def find_best_degree_alpha(train,alphas,args):
     
     train_features = categorical_features + numeric_features
     
-    if args['preprocessing'] == 'MinMaxScaler':
+    if processor == 'MinMaxScaler':
         scaler = MinMaxScaler()
     
-    elif args['preprocessing'] == 'StandardScaler':
+    elif processor == 'StandardScaler':
         scaler = StandardScaler()
     
     numeric_pipeline = Pipeline([
@@ -59,7 +59,7 @@ def find_best_degree_alpha(train,alphas,args):
     
     return model,numeric_features,categorical_features
 
-def train_model(train,best_alpha,best_degree,args):
+def train_model(train,best_alpha,best_degree,processor):
     numeric_features = (
     train.select_dtypes(include=["float64"])
     .columns
@@ -75,10 +75,10 @@ def train_model(train,best_alpha,best_degree,args):
     
     train_features = categorical_features + numeric_features
     
-    if args['preprocessing'] == 'MinMaxScaler':
+    if processor == 'MinMaxScaler':
         scaler = MinMaxScaler()
     
-    elif args['preprocessing'] == 'StandardScaler':
+    elif processor == 'StandardScaler':
         scaler = StandardScaler()
     
     numeric_pipeline = Pipeline([
