@@ -70,19 +70,19 @@ def save_configs_and_model(model, numeric_features, categorical_features, args):
         "Numerical_Features": numeric_features,
         "Categorical_Features": categorical_features
     }
-    save_or_update_yaml(model_config, "model_config.yaml")
+    save_or_update_yaml(model_config, "config/model_config.yaml")
 
     # ----- DATA CONFIG -----
     data_config = {
-        "train_size": 0.8,
-        "test_size": 0.2,
-        "random_state": 17,
+        "train_size": 1-args.test_size,
+        "test_size": args.test_size,
+        "Shuffle": args.Shuffle,
         "Outlier_Removal": args.outlier,
-        "Weak_Features_Drop": args.weak_features_drop,
-        "search_best_params": args.search_best_params
+        "Weak_Features_Drop": args.weak_features_drop
     }
-    save_or_update_yaml(data_config, "data_config.yaml")
+    save_or_update_yaml(data_config, "config/data_config.yaml")
 
     # ----- MODEL ONLY -----
-    joblib.dump(model, "Ridge_Model.pkl")
+    joblib.dump(model, "Models/Ridge_Model.pkl")
     print("✅ Model saved as Ridge_Model.pkl")
+
