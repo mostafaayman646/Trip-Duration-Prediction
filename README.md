@@ -4,7 +4,7 @@ This project aims to predict the total ride duration of taxi trips in New York C
 
 ## Repo structure and File descriptions
 ```
-Trip-Duration-Prediction/
+NYC-Taxi-Trip-Duration
 ├── README.md
 ├── requirements.txt
 ├── (EDA) New York City EDA.ipynb
@@ -12,8 +12,14 @@ Trip-Duration-Prediction/
 ├── train.py
 ├── data_helper.py
 ├── utilities.py
-├── Ridge_model
 ├── regression_utils
+├── Data  
+│   └── split.csv
+├── Models   
+│   └── Ridge_model.pkl
+└── config
+    ├── model_config
+    └── data_config
 ```
 - `README.md`: Contains information about the project, how to set it up, and any other relevant details.
 - `requirements.txt`: Lists all the dependencies required for the project to run.
@@ -33,7 +39,7 @@ pip install -r requirements.txt
 ## Usage
 Make sure to be in Trip-Duration-Prediction
 
-1. Change the test data path in Script.py
+1. Download the Data folder from the Google Drive link and put it inside the repo folder
 2. Run Script.py
 ## Notes
 
@@ -77,4 +83,4 @@ Feel free to download it from here [Google Drive](https://drive.google.com/drive
 5. Log transformation applied
 
 ### Results
--Test has R2 score: 0.6560970486356581 and RMSE: 0.4663110505135874
+- Test has R2 score: 0.6560970486356581 and RMSE: 0.4663110505135874
