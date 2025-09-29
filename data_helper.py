@@ -60,7 +60,8 @@ def manhattan_distance(df):
 
 def weak_features(df):
     #Based on EDA these are the weak features
-    drop_features = ['pickup_latitude','dropoff_latitude','day','dayofweek']
+    drop_features = ['vendor_id','pickup_longitude','pickup_latitude',
+                     'dropoff_longitude','dropoff_latitude','direction']
     
     return df.drop(columns = drop_features)
 
@@ -68,18 +69,46 @@ def prepare_data(df,outlier,weak_features_drop):
     
     #Datetime features
     df["pickup_datetime"] = pd.to_datetime(df["pickup_datetime"]) 
-    bins = [0, 2, 5, 8, 11, 12]  # 0, 2, 5, 8, 11, 12 represent the starting and ending months of each season
-    labels = ['0', '1', '2', '3', '4'] # Labels for each season ['Winter', 'Spring', 'Summer', 'Autumn', 'Winter'] 
-    df["hour"] = df["pickup_datetime"].dt.hour
-    df["day"]  = df["pickup_datetime"].dt.day
-    df["dayofweek"] = df["pickup_datetime"].dt.dayofweek
-    df["month"]  = df["pickup_datetime"].dt.month
-    df['Season'] = pd.cut(df["month"] , bins=bins, labels=labels, right=False,ordered=False) 
+    
+    # Hour bins (Time of day)
+    hour_bins   = [0, 6, 12, 16, 21, 24]   # cover full 24 hours
+    hour_labels = ['Night', 'Morning', 'Afternoon', 'Evening', 'Late Night']
+    df["hour_period_bin"] = pd.cut(
+        df["pickup_datetime"].dt.hour,
+        bins=hour_bins,
+        labels=hour_labels,
+        right=False
+    )
 
-    #Outliers
-    if outlier:
-        features = ['pickup_longitude','pickup_latitude','dropoff_longitude','dropoff_latitude','trip_duration']
-        df = outlier_removal(df,features) 
+    # Day of week: weekday vs jobdays
+    df["dayofweek"] = df["pickup_datetime"].dt.dayofweek
+    df["dayofweek"] = df["dayofweek"].map(
+        lambda x: "Weekend" if x >= 5 else "Jobday"
+    )
+
+    # Day of month and day of year
+    df["day"] = df["pickup_datetime"].dt.day
+
+    doy_bins   = [0, 90, 180, 270, 365]  
+    doy_labels = ["Q1", "Q2", "Q3", "Q4"]  
+
+    df["dayofyear_bin"] = pd.cut(
+        df["pickup_datetime"].dt.day_of_year,
+        bins=doy_bins,
+        labels=doy_labels
+    )
+
+    # Month and # Seasons
+    df["month"] = df["pickup_datetime"].dt.month
+
+    season_bins   = [0, 3, 6, 9, 11]   # Winter(Dec–Feb), Spring, Summer, Autumn
+    season_labels = ['Winter', 'Spring', 'Summer', 'Autumn']
+    df["season"] = pd.cut(
+        df["month"],
+        bins=season_bins,
+        labels=season_labels,
+        right=False
+    )
     
     #Distance feature
     df['distance_haversine'] = haversine_distance(df)

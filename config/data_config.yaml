@@ -1,5 +1,6 @@
 Outlier_Removal: false
-Weak_Features_Drop: false
-Shuffle: True
+Shuffle: true
+Weak_Features_Drop: true
+data_path: Data/split.zip
 test_size: 0.2
 train_size: 0.8

@@ -64,6 +64,7 @@ def save_configs_and_model(model, numeric_features, categorical_features, args):
     # ----- MODEL CONFIG -----
     model_config = {
         "model_type": "RidgeRegression",
+        "model_path": args.model_path,
         "Polynomial_Degree": args.Degree,
         "Alpha": args.Alpha,
         "Scaler": args.preprocessing,
@@ -74,6 +75,7 @@ def save_configs_and_model(model, numeric_features, categorical_features, args):
 
     # ----- DATA CONFIG -----
     data_config = {
+        "data_path": args.data_path,
         "train_size": 1-args.test_size,
         "test_size": args.test_size,
         "Shuffle": args.Shuffle,
@@ -85,4 +87,3 @@ def save_configs_and_model(model, numeric_features, categorical_features, args):
     # ----- MODEL ONLY -----
     joblib.dump(model, "Models/Ridge_Model.pkl")
     print("✅ Model saved as Ridge_Model.pkl")
-

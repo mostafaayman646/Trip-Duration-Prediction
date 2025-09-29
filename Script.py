@@ -11,14 +11,14 @@ if __name__ == '__main__':
         data_config = yaml.safe_load(f)
     
     #Load Test dataset
-    _,test= load_data_from_zip('Data/split.zip',test_size=data_config['test_size'],Shuffle=data_config['Shuffle'])
+    _,test= load_data_from_zip(data_config['data_path'],test_size=data_config['test_size'],Shuffle=data_config['Shuffle'])
     test = prepare_data(
         test,
         outlier=data_config["Outlier_Removal"],
         weak_features_drop=data_config["Weak_Features_Drop"]
     )
     #Load model
-    model = load_model("Models/Ridge_Model.pkl")
+    model = load_model(model_config['model_path'])
     
     Numerical_features   = model_config["Numerical_Features"]
     Categorical_features = model_config["Categorical_Features"]

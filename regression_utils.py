@@ -5,7 +5,7 @@ from sklearn.linear_model import Ridge
 from utilities import*
 from sklearn.model_selection import RandomizedSearchCV, KFold
 
-def find_best_degree_alpha(train,alphas,processor):
+def find_best_degree_alpha(train,args):
     numeric_features = (
     train.select_dtypes(include=["float64"])
     .columns
@@ -21,10 +21,10 @@ def find_best_degree_alpha(train,alphas,processor):
     
     train_features = categorical_features + numeric_features
     
-    if processor == 'MinMaxScaler':
+    if args.preprocessing == 'MinMaxScaler':
         scaler = MinMaxScaler()
     
-    elif processor == 'StandardScaler':
+    elif args.preprocessing == 'StandardScaler':
         scaler = StandardScaler()
     
     numeric_pipeline = Pipeline([
@@ -43,10 +43,10 @@ def find_best_degree_alpha(train,alphas,processor):
         ('regression', Ridge())
     ])
     
-    grid = {'clf__numeric__poly__degree': [4,5],
-            'regression__alpha':alphas}
+    grid = {'clf__numeric__poly__degree': args.degrees_to_search,
+            'regression__alpha':args.alphas_to_search}
     
-    kf = KFold(n_splits=5, shuffle=True, random_state=17)
+    kf = KFold(n_splits=args.cv_folds, shuffle=args.Shuffle, random_state=args.RandomSeed)
     
     model = RandomizedSearchCV(pipeline, grid, cv=kf, scoring= 'r2')
     
@@ -59,7 +59,7 @@ def find_best_degree_alpha(train,alphas,processor):
     
     return model,numeric_features,categorical_features
 
-def train_model(train,best_alpha,best_degree,processor):
+def train_model(train,args):
     numeric_features = (
     train.select_dtypes(include=["float64"])
     .columns
@@ -75,14 +75,14 @@ def train_model(train,best_alpha,best_degree,processor):
     
     train_features = categorical_features + numeric_features
     
-    if processor == 'MinMaxScaler':
+    if args.preprocessing == 'MinMaxScaler':
         scaler = MinMaxScaler()
     
-    elif processor == 'StandardScaler':
+    elif args.preprocessing == 'StandardScaler':
         scaler = StandardScaler()
     
     numeric_pipeline = Pipeline([
-        ("poly", PolynomialFeatures(degree=best_degree,include_bias=False)),
+        ("poly", PolynomialFeatures(degree=args.Degree,include_bias=False)),
         ("scaler", scaler)
     ])
     
@@ -94,7 +94,7 @@ def train_model(train,best_alpha,best_degree,processor):
     
     pipeline = Pipeline(steps=[
         ('clf', clf),
-        ('regression', Ridge(alpha=best_alpha))
+        ('regression', Ridge(alpha=args.Alpha))
     ])
     
     model = pipeline

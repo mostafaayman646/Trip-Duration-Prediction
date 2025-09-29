@@ -83,4 +83,4 @@ Feel free to download it from here [Google Drive](https://drive.google.com/drive
 5. Log transformation applied
 
 ### Results
-- Test has R2 score: 0.6560970486356581 and RMSE: 0.4663110505135874
+- Test has R2 score: 0.6238187914490088 and RMSE: 0.4877039854290511
